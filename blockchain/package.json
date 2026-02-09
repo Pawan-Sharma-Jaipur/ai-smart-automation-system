@@ -1,0 +1,12 @@
+{
+  "name": "blockchain-deployment",
+  "version": "1.0.0",
+  "description": "Smart contract deployment",
+  "scripts": {
+    "deploy": "node deploy.js"
+  },
+  "dependencies": {
+    "web3": "^4.2.0",
+    "solc": "^0.8.20"
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+.env
+*.pkl
+contract-info.json
+.expo/
+.expo-shared/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+dist/

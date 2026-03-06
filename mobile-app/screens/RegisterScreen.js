@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { authAPI } from '../services/api';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { api } from '../services/api';
 
 export default function RegisterScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('User');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -16,98 +17,178 @@ export default function RegisterScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await authAPI.register({ username, email, password });
-      Alert.alert('Success', 'Registration successful! Please login.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
-      ]);
+      const data = await api.register(username, email, password, role);
+      if (data.success) {
+        Alert.alert('Success', 'Registration successful!', [
+          { text: 'OK', onPress: () => navigation.navigate('Login') }
+        ]);
+      } else {
+        Alert.alert('Error', data.message || 'Registration failed');
+      }
     } catch (error) {
-      Alert.alert('Registration Failed', error.response?.data?.error || 'Try again');
+      Alert.alert('Error', 'Backend not running!');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>Join AI Automation System</Text>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-      />
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
+        <View style={styles.roleContainer}>
+          <Text style={styles.label}>Select Role:</Text>
+          <View style={styles.roleButtons}>
+            {['User', 'Manager', 'Admin', 'Guest'].map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={[styles.roleButton, role === r && styles.roleButtonActive]}
+                onPress={() => setRole(r)}
+              >
+                <Text style={[styles.roleButtonText, role === r && styles.roleButtonTextActive]}>
+                  {r}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={handleRegister}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Register</Text>
+          )}
+        </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={handleRegister}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>{loading ? 'Registering...' : 'Register'}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.link}>Already have an account? Login</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.link}>Already have an account? Login</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
+  },
+  header: {
+    backgroundColor: '#667eea',
+    padding: 40,
+    paddingTop: 60,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 30,
-    color: '#333',
+    color: '#fff',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  form: {
+    padding: 30,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f7fafc',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 15,
+    fontSize: 16,
+  },
+  pickerContainer: {
+    backgroundColor: '#f7fafc',
+    borderRadius: 10,
+    marginBottom: 15,
+    padding: 10,
+  },
+  label: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  roleContainer: {
+    marginBottom: 15,
+  },
+  roleButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  roleButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#f7fafc',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#e2e8f0',
+  },
+  roleButtonActive: {
+    backgroundColor: '#667eea',
+    borderColor: '#667eea',
+  },
+  roleButtonText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  roleButtonTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 8,
+    backgroundColor: '#667eea',
+    padding: 18,
+    borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   link: {
-    color: '#007AFF',
     textAlign: 'center',
+    color: '#667eea',
     marginTop: 20,
+    fontSize: 16,
   },
 });

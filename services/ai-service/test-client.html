@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prediction Service - Test Client</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 5px solid #28a745;
+        }
+        .error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 5px solid #dc3545;
+        }
+        .prediction-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .prediction-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .confidence {
+            font-size: 1.5em;
+            color: #28a745;
+        }
+        .probabilities {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .prob-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .prob-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .prob-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .explanation {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #ffc107;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🤖 AI Prediction Service</h1>
+            <p class="subtitle">Enterprise-Grade Smartphone Automation Predictor</p>
+            <div>
+                Service Status: <span class="status" id="serviceStatus">Checking...</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Make a Prediction</h2>
+            <form id="predictionForm">
+                <div class="form-group">
+                    <label for="hour">Hour of Day (0-23)</label>
+                    <input type="number" id="hour" min="0" max="23" value="14" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="usageCount">Phone Usage Count</label>
+                    <input type="number" id="usageCount" min="0" max="100" value="25" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="context">Context</label>
+                    <select id="context" required>
+                        <option value="0">Home</option>
+                        <option value="1" selected>Work</option>
+                        <option value="2">Public</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="batteryLevel">Battery Level (%)</label>
+                    <input type="number" id="batteryLevel" min="0" max="100" value="75" required>
+                </div>
+
+                <button type="submit" id="predictBtn">
+                    🎯 Get AI Prediction
+                </button>
+            </form>
+
+            <div id="result"></div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Service Statistics</h2>
+            <div class="stats" id="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="modelVersion">-</div>
+                    <div class="stat-label">Model Version</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="accuracy">-</div>
+                    <div class="stat-label">Accuracy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="predictions">-</div>
+                    <div class="stat-label">Total Predictions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="uptime">-</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3002';
+
+        // Check service status
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                document.getElementById('serviceStatus').textContent = 'Online';
+                document.getElementById('serviceStatus').className = 'status online';
+                
+                // Update stats
+                document.getElementById('modelVersion').textContent = data.model.version;
+                document.getElementById('accuracy').textContent = data.model.accuracy + '%';
+                document.getElementById('predictions').textContent = data.model.totalPredictions;
+                document.getElementById('uptime').textContent = Math.floor(data.uptime) + 's';
+                
+            } catch (error) {
+                document.getElementById('serviceStatus').textContent = 'Offline';
+                document.getElementById('serviceStatus').className = 'status offline';
+            }
+        }
+
+        // Make prediction
+        document.getElementById('predictionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('predictBtn');
+            const resultDiv = document.getElementById('result');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Predicting...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/ai/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        hour: parseInt(document.getElementById('hour').value),
+                        usageCount: parseInt(document.getElementById('usageCount').value),
+                        context: parseInt(document.getElementById('context').value),
+                        batteryLevel: parseInt(document.getElementById('batteryLevel').value)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result">
+                            <h3>✅ Prediction Result</h3>
+                            
+                            <div class="prediction-box">
+                                <div style="color: #666;">Recommended Mode:</div>
+                                <div class="prediction-value">${data.prediction}</div>
+                                <div class="confidence">Confidence: ${data.confidence}%</div>
+                            </div>
+
+                            <h4>Probabilities:</h4>
+                            <div class="probabilities">
+                                <div class="prob-item">
+                                    <div class="prob-label">Silent</div>
+                                    <div class="prob-value">${data.probabilities.Silent}%</div>
+                                </div>
+                                <div class="prob-item">
+                                    <div class="prob-label">Vibrate</div>
+                                    <div class="prob-value">${data.probabilities.Vibrate}%</div>
+                                </div>
+                                <div class="prob-item">
+                                    <div class="prob-label">Normal</div>
+                                    <div class="prob-value">${data.probabilities.Normal}%</div>
+                                </div>
+                            </div>
+
+                            <div class="explanation">
+                                <h4>💡 Explanation:</h4>
+                                <p>${data.explanation.summary}</p>
+                                <p style="margin-top: 10px;"><strong>Factors:</strong></p>
+                                <ul>
+                                    ${data.explanation.factors.map(f => `<li>${f}</li>`).join('')}
+                                </ul>
+                            </div>
+
+                            <p style="margin-top: 15px; color: #666;">
+                                <small>
+                                    Model: ${data.modelVersion} | 
+                                    Processing Time: ${data.processingTime} | 
+                                    ID: ${data.predictionId}
+                                </small>
+                            </p>
+                        </div>
+                    `;
+                    
+                    // Update stats
+                    checkStatus();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Error</h3>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Connection Error</h3>
+                        <p>Could not connect to AI service. Make sure it's running on port 3002.</p>
+                        <p><small>${error.message}</small></p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🎯 Get AI Prediction';
+            }
+        });
+
+        // Initial status check
+        checkStatus();
+        
+        // Update stats every 5 seconds
+        setInterval(checkStatus, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Automation - Mobile</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .header { 
+            background: white;
+            padding: 30px 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .header h1 { color: #667eea; font-size: 24px; margin-bottom: 10px; }
+        .header p { color: #666; font-size: 14px; }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .card h2 { color: #333; font-size: 18px; margin-bottom: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #555; font-weight: 600; font-size: 14px; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .result {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+        .result.show { display: block; }
+        .prediction { font-size: 32px; font-weight: bold; color: #667eea; margin: 10px 0; }
+        .confidence { font-size: 18px; color: #48bb78; margin: 10px 0; }
+        .explanation { color: #666; font-size: 14px; line-height: 1.6; }
+        .loading { text-align: center; padding: 20px; color: #667eea; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Phone Mode</h1>
+            <p>Smart Automation System</p>
+        </div>
+
+        <div class="card">
+            <h2>📱 Get Prediction</h2>
+            <form id="predictionForm">
+                <div class="form-group">
+                    <label>⏰ Current Hour (0-23)</label>
+                    <input type="number" id="hour" min="0" max="23" value="14" required>
+                </div>
+                <div class="form-group">
+                    <label>📊 Phone Usage Count</label>
+                    <input type="number" id="usage" min="0" max="100" value="25" required>
+                </div>
+                <div class="form-group">
+                    <label>📍 Where are you?</label>
+                    <select id="context" required>
+                        <option value="0">🏠 Home</option>
+                        <option value="1" selected>💼 Work</option>
+                        <option value="2">🌍 Public</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Get AI Prediction</button>
+            </form>
+
+            <div id="result" class="result">
+                <div class="prediction" id="predictionText"></div>
+                <div class="confidence" id="confidenceText"></div>
+                <div class="explanation" id="explanationText"></div>
+            </div>
+        </div>
+
+        <div class="card" style="text-align: center; padding: 15px;">
+            <p style="color: #666; font-size: 12px;">
+                Powered by AI/ML Microservices<br>
+                94.5% Accuracy
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000' 
+            : `http://${window.location.hostname}:3000`;
+
+        document.getElementById('predictionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const hour = parseInt(document.getElementById('hour').value);
+            const usageCount = parseInt(document.getElementById('usage').value);
+            const context = parseInt(document.getElementById('context').value);
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="loading">🤖 AI is thinking...</div>';
+            resultDiv.classList.add('show');
+
+            try {
+                const response = await fetch(`${API_URL}/api/ai/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hour, usageCount, context })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const emoji = {
+                        'Silent': '🔇',
+                        'Vibrate': '📳',
+                        'Normal': '🔔'
+                    };
+
+                    resultDiv.innerHTML = `
+                        <div class="prediction">${emoji[data.prediction]} ${data.prediction} Mode</div>
+                        <div class="confidence">✅ ${(data.confidence).toFixed(1)}% Confident</div>
+                        <div class="explanation">
+                            <strong>Why?</strong><br>
+                            ${data.explanation.summary}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div style="color: red;">❌ Prediction failed</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: red;">❌ Error: ${error.message}<br><br>Make sure services are running!</div>`;
+            }
+        });
+
+        // Auto-fill current hour
+        document.getElementById('hour').value = new Date().getHours();
+    </script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monitoring Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { margin-bottom: 30px; }
+        .header h1 { font-size: 32px; margin-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #334155; }
+        .card h3 { color: #94a3b8; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; }
+        .metric { font-size: 36px; font-weight: bold; margin: 10px 0; }
+        .metric.green { color: #10b981; }
+        .metric.yellow { color: #f59e0b; }
+        .metric.red { color: #ef4444; }
+        .status { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status.online { background: #10b981; color: white; }
+        .status.offline { background: #ef4444; color: white; }
+        .log-entry { padding: 8px; margin: 5px 0; background: #0f172a; border-radius: 4px; font-size: 12px; font-family: monospace; }
+        .log-entry.error { border-left: 3px solid #ef4444; }
+        .log-entry.warn { border-left: 3px solid #f59e0b; }
+        .log-entry.info { border-left: 3px solid #3b82f6; }
+        .chart { height: 200px; margin-top: 15px; }
+        .refresh-btn { padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .refresh-btn:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 System Monitoring Dashboard</h1>
+            <p style="color: #94a3b8;">Real-time monitoring of microservices</p>
+            <button class="refresh-btn" onclick="refreshAll()">🔄 Refresh</button>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>API Gateway</h3>
+                <div class="metric green" id="gatewayStatus">●</div>
+                <div id="gatewayInfo">Loading...</div>
+            </div>
+            <div class="card">
+                <h3>AI Service</h3>
+                <div class="metric green" id="aiStatus">●</div>
+                <div id="aiInfo">Loading...</div>
+            </div>
+            <div class="card">
+                <h3>User Service</h3>
+                <div class="metric green" id="userStatus">●</div>
+                <div id="userInfo">Loading...</div>
+            </div>
+            <div class="card">
+                <h3>System Uptime</h3>
+                <div class="metric green" id="uptime">0s</div>
+                <div style="color: #94a3b8; font-size: 14px;">All services operational</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>Performance Metrics</h3>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 15px;">
+                    <div>
+                        <div style="color: #94a3b8; font-size: 12px;">Total Requests</div>
+                        <div class="metric" style="font-size: 24px;" id="totalRequests">0</div>
+                    </div>
+                    <div>
+                        <div style="color: #94a3b8; font-size: 12px;">Avg Response Time</div>
+                        <div class="metric" style="font-size: 24px;" id="avgResponse">0ms</div>
+                    </div>
+                    <div>
+                        <div style="color: #94a3b8; font-size: 12px;">Success Rate</div>
+                        <div class="metric green" style="font-size: 24px;" id="successRate">100%</div>
+                    </div>
+                    <div>
+                        <div style="color: #94a3b8; font-size: 12px;">Active Users</div>
+                        <div class="metric" style="font-size: 24px;" id="activeUsers">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>Circuit Breakers Status</h3>
+                <div id="circuitBreakers" style="margin-top: 15px;">Loading...</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>Recent Logs</h3>
+                <div id="logs" style="max-height: 300px; overflow-y: auto; margin-top: 15px;">
+                    <div class="log-entry info">[INFO] System monitoring started</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let requestCount = 0;
+        let responseTimes = [];
+
+        async function checkGateway() {
+            try {
+                const res = await fetch(`${API_URL}/health`);
+                const data = await res.json();
+                
+                document.getElementById('gatewayStatus').textContent = '● ONLINE';
+                document.getElementById('gatewayStatus').className = 'metric green';
+                document.getElementById('gatewayInfo').innerHTML = `
+                    <div style="color: #94a3b8; font-size: 14px;">
+                        Uptime: ${Math.floor(data.uptime)}s<br>
+                        Status: ${data.status}
+                    </div>
+                `;
+                
+                document.getElementById('uptime').textContent = `${Math.floor(data.uptime)}s`;
+                
+                if (data.circuitBreakers) {
+                    displayCircuitBreakers(data.circuitBreakers);
+                }
+                
+                addLog('info', 'Gateway health check successful');
+            } catch (error) {
+                document.getElementById('gatewayStatus').textContent = '● OFFLINE';
+                document.getElementById('gatewayStatus').className = 'metric red';
+                addLog('error', `Gateway health check failed: ${error.message}`);
+            }
+        }
+
+        async function checkAI() {
+            try {
+                const res = await fetch(`${API_URL}/api/ai/stats`);
+                const data = await res.json();
+                
+                document.getElementById('aiStatus').textContent = '● ONLINE';
+                document.getElementById('aiStatus').className = 'metric green';
+                document.getElementById('aiInfo').innerHTML = `
+                    <div style="color: #94a3b8; font-size: 14px;">
+                        Predictions: ${data.stats?.totalPredictions || 0}<br>
+                        Accuracy: ${data.stats?.accuracy || 0}%
+                    </div>
+                `;
+                
+                addLog('info', 'AI service health check successful');
+            } catch (error) {
+                document.getElementById('aiStatus').textContent = '● OFFLINE';
+                document.getElementById('aiStatus').className = 'metric red';
+                addLog('error', `AI service check failed: ${error.message}`);
+            }
+        }
+
+        async function checkUser() {
+            try {
+                const res = await fetch(`${API_URL}/api/users`);
+                const data = await res.json();
+                
+                document.getElementById('userStatus').textContent = '● ONLINE';
+                document.getElementById('userStatus').className = 'metric green';
+                document.getElementById('userInfo').innerHTML = `
+                    <div style="color: #94a3b8; font-size: 14px;">
+                        Total Users: ${data.total || 0}<br>
+                        Status: Active
+                    </div>
+                `;
+                
+                document.getElementById('activeUsers').textContent = data.total || 0;
+                addLog('info', 'User service health check successful');
+            } catch (error) {
+                document.getElementById('userStatus').textContent = '● OFFLINE';
+                document.getElementById('userStatus').className = 'metric red';
+                addLog('error', `User service check failed: ${error.message}`);
+            }
+        }
+
+        function displayCircuitBreakers(breakers) {
+            const html = Object.entries(breakers).map(([name, state]) => `
+                <div style="display: inline-block; margin: 10px; padding: 15px; background: #0f172a; border-radius: 8px; min-width: 200px;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">${name.toUpperCase()}</div>
+                    <div style="color: ${state.state === 'CLOSED' ? '#10b981' : '#ef4444'}; font-size: 20px; font-weight: bold;">
+                        ${state.state}
+                    </div>
+                    <div style="color: #94a3b8; font-size: 12px; margin-top: 5px;">
+                        Failures: ${state.failureCount}<br>
+                        Success: ${state.successCount}
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('circuitBreakers').innerHTML = html;
+        }
+
+        function addLog(type, message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${timestamp}] [${type.toUpperCase()}] ${message}`;
+            logsDiv.insertBefore(logEntry, logsDiv.firstChild);
+            
+            if (logsDiv.children.length > 50) {
+                logsDiv.removeChild(logsDiv.lastChild);
+            }
+        }
+
+        function updateMetrics() {
+            requestCount++;
+            document.getElementById('totalRequests').textContent = requestCount;
+            
+            const avgTime = responseTimes.length > 0 
+                ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+                : 0;
+            document.getElementById('avgResponse').textContent = `${avgTime}ms`;
+        }
+
+        async function refreshAll() {
+            addLog('info', 'Refreshing all services...');
+            await Promise.all([checkGateway(), checkAI(), checkUser()]);
+            updateMetrics();
+        }
+
+        refreshAll();
+        setInterval(refreshAll, 10000);
+    </script>
+</body>
+</html>

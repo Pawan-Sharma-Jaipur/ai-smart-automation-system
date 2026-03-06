@@ -2,6 +2,7 @@ import sys
 import pickle
 import json
 import os
+from model import SimpleDecisionTree
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(script_dir, 'automation_model.pkl')

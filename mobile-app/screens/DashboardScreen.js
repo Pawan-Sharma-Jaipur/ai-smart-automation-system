@@ -1,108 +1,188 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { aiAPI, blockchainAPI, adminAPI } from '../services/api';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { api } from '../services/api';
 
-export default function DashboardScreen({ navigation }) {
-  const [user, setUser] = useState(null);
+export default function DashboardScreen({ route, navigation }) {
+  const { user } = route.params;
+  const [hour, setHour] = useState('14');
+  const [usage, setUsage] = useState('25');
+  const [context, setContext] = useState(0);
+  const [battery, setBattery] = useState('75');
   const [prediction, setPrediction] = useState(null);
-  const [txHash, setTxHash] = useState(null);
+  const [predictions, setPredictions] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadUser();
+    loadData();
   }, []);
 
-  const loadUser = async () => {
-    const userData = await AsyncStorage.getItem('user');
-    setUser(JSON.parse(userData));
+  const loadData = async () => {
+    try {
+      const [predData, statsData] = await Promise.all([
+        api.getPredictions(),
+        api.getStats()
+      ]);
+      if (predData.success) setPredictions(predData.predictions.slice(0, 5));
+      if (statsData.success) setStats(statsData.stats);
+    } catch (error) {
+      console.log('Load error:', error);
+    }
   };
 
-  const handleAIPrediction = async () => {
+  const makePrediction = async () => {
     setLoading(true);
-    setPrediction(null);
     try {
-      const hour = new Date().getHours();
-      const usageCount = Math.floor(Math.random() * 30) + 1;
-      const context = hour >= 9 && hour <= 17 ? 1 : 0;
-
-      const response = await aiAPI.predict({ hour, usageCount, context });
-      setPrediction(response.data);
-
-      await logToBlockchain('AI_AUTOMATION_TRIGGERED');
+      const data = await api.predict(
+        parseInt(hour),
+        parseInt(usage),
+        parseInt(context),
+        parseInt(battery),
+        user.id
+      );
+      if (data.success) {
+        setPrediction(data);
+        Alert.alert('Success', `Prediction: ${data.prediction}`);
+        loadData();
+      } else {
+        Alert.alert('Error', data.error);
+      }
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.error || 'AI prediction failed');
+      Alert.alert('Error', 'Prediction failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const logToBlockchain = async (action) => {
-    try {
-      const response = await blockchainAPI.logAction({ action });
-      setTxHash(response.data.transactionHash);
-    } catch (error) {
-      console.log('Blockchain logging error:', error.response?.data?.error);
-    }
-  };
-
-  const handleLogout = async () => {
-    await AsyncStorage.clear();
-    navigation.replace('Login');
-  };
-
-  const navigateToAdmin = () => {
-    navigation.navigate('Admin');
-  };
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Dashboard</Text>
-        <Text style={styles.welcome}>Welcome, {user?.username}</Text>
-        <Text style={styles.role}>Role: {user?.role}</Text>
+        <View>
+          <Text style={styles.welcome}>Welcome, {user.username}!</Text>
+          <Text style={styles.role}>{user.role}</Text>
+        </View>
+        <TouchableOpacity onPress={() => navigation.replace('Login')}>
+          <Text style={styles.logout}>Logout</Text>
+        </TouchableOpacity>
       </View>
 
+      {stats && (
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.totalPredictions}</Text>
+            <Text style={styles.statLabel}>Predictions</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.accuracy}%</Text>
+            <Text style={styles.statLabel}>Accuracy</Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>AI Automation</Text>
-        <Text style={styles.cardDesc}>Predict smartphone automation mode</Text>
+        <Text style={styles.cardTitle}>🤖 AI Prediction</Text>
         
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Hour (0-23)</Text>
+          <TextInput
+            style={styles.input}
+            value={hour}
+            onChangeText={setHour}
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Usage Count</Text>
+          <TextInput
+            style={styles.input}
+            value={usage}
+            onChangeText={setUsage}
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Context</Text>
+          <View style={styles.contextButtons}>
+            {[{label: 'Home', value: 0}, {label: 'Work', value: 1}, {label: 'Public', value: 2}].map((ctx) => (
+              <TouchableOpacity
+                key={ctx.value}
+                style={[styles.contextButton, context === ctx.value && styles.contextButtonActive]}
+                onPress={() => setContext(ctx.value)}
+              >
+                <Text style={[styles.contextButtonText, context === ctx.value && styles.contextButtonTextActive]}>
+                  {ctx.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Battery Level (%)</Text>
+          <TextInput
+            style={styles.input}
+            value={battery}
+            onChangeText={setBattery}
+            keyboardType="numeric"
+          />
+        </View>
+
         <TouchableOpacity 
-          style={styles.button} 
-          onPress={handleAIPrediction}
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={makePrediction}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>
-            {loading ? 'Predicting...' : 'Trigger AI Prediction'}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Get Prediction</Text>
+          )}
         </TouchableOpacity>
 
         {prediction && (
           <View style={styles.result}>
-            <Text style={styles.resultTitle}>Prediction Result:</Text>
-            <Text style={styles.resultText}>Action: {prediction.prediction}</Text>
-            <Text style={styles.resultText}>Confidence: {prediction.confidence}%</Text>
-            <Text style={styles.resultDesc}>{prediction.explanation}</Text>
-          </View>
-        )}
-
-        {txHash && (
-          <View style={styles.blockchain}>
-            <Text style={styles.blockchainTitle}>✓ Logged to Blockchain</Text>
-            <Text style={styles.txHash}>TX: {txHash.substring(0, 20)}...</Text>
+            <Text style={styles.resultTitle}>Result:</Text>
+            <Text style={styles.resultValue}>{prediction.prediction}</Text>
+            <Text style={styles.resultConfidence}>
+              Confidence: {prediction.confidence}%
+            </Text>
+            <View style={styles.probabilities}>
+              <Text style={styles.probText}>
+                Silent: {prediction.probabilities.Silent}%
+              </Text>
+              <Text style={styles.probText}>
+                Vibrate: {prediction.probabilities.Vibrate}%
+              </Text>
+              <Text style={styles.probText}>
+                Normal: {prediction.probabilities.Normal}%
+              </Text>
+            </View>
           </View>
         )}
       </View>
 
-      {user?.role === 'Admin' && (
-        <TouchableOpacity style={styles.adminButton} onPress={navigateToAdmin}>
-          <Text style={styles.buttonText}>Admin Panel</Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>📊 Recent Predictions</Text>
+        {predictions.map((pred, i) => (
+          <View key={i} style={styles.predItem}>
+            <Text style={styles.predValue}>{pred.prediction}</Text>
+            <Text style={styles.predDetail}>
+              {pred.confidence}% • {new Date(pred.created_at).toLocaleTimeString()}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {user.role === 'Admin' && (
+        <TouchableOpacity 
+          style={styles.adminButton}
+          onPress={() => navigation.navigate('Admin', { user })}
+        >
+          <Text style={styles.adminButtonText}>🛡️ Admin Panel</Text>
         </TouchableOpacity>
       )}
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Logout</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -110,55 +190,115 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f0f2f5',
   },
   header: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#667eea',
     padding: 20,
     paddingTop: 50,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   welcome: {
-    fontSize: 18,
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
-    marginTop: 5,
   },
   role: {
     fontSize: 14,
     color: '#fff',
-    marginTop: 5,
     opacity: 0.9,
+  },
+  logout: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    padding: 15,
+    gap: 15,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#667eea',
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
   },
   card: {
     backgroundColor: '#fff',
-    margin: 20,
+    margin: 15,
     padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 12,
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  cardDesc: {
-    fontSize: 14,
-    color: '#666',
     marginBottom: 15,
   },
+  inputGroup: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  input: {
+    backgroundColor: '#f7fafc',
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 16,
+  },
+  picker: {
+    backgroundColor: '#f7fafc',
+    borderRadius: 8,
+  },
+  contextButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  contextButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f7fafc',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  contextButtonActive: {
+    backgroundColor: '#667eea',
+    borderColor: '#667eea',
+  },
+  contextButtonText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  contextButtonTextActive: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#667eea',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#fff',
@@ -168,7 +308,7 @@ const styles = StyleSheet.create({
   result: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: '#e8f5e9',
+    backgroundColor: '#f7fafc',
     borderRadius: 8,
   },
   resultTitle: {
@@ -176,44 +316,50 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
   },
-  resultText: {
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  resultDesc: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-  },
-  blockchain: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#fff3e0',
-    borderRadius: 8,
-  },
-  blockchainTitle: {
-    fontSize: 14,
+  resultValue: {
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#f57c00',
-  },
-  txHash: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-  },
-  adminButton: {
-    backgroundColor: '#FF9500',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 20,
+    color: '#667eea',
     marginBottom: 10,
   },
-  logoutButton: {
-    backgroundColor: '#FF3B30',
+  resultConfidence: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 10,
+  },
+  probabilities: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  probText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  predItem: {
+    padding: 12,
+    backgroundColor: '#f7fafc',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  predValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  predDetail: {
+    fontSize: 12,
+    color: '#666',
+  },
+  adminButton: {
+    backgroundColor: '#667eea',
+    margin: 15,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    margin: 20,
+  },
+  adminButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Gateway Test Client</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #667eea; margin-bottom: 10px; }
+        .status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; }
+        .status.online { background: #10b981; color: white; }
+        .status.offline { background: #ef4444; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card h2 { color: #333; margin-bottom: 15px; font-size: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: 500; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+        button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s; }
+        button:hover { background: #5568d3; }
+        .response { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 15px; max-height: 300px; overflow-y: auto; }
+        .response pre { white-space: pre-wrap; word-wrap: break-word; font-size: 13px; color: #333; }
+        .services { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 15px; }
+        .service { padding: 15px; background: #f8f9fa; border-radius: 5px; text-align: center; }
+        .service-name { font-weight: bold; color: #667eea; margin-bottom: 5px; }
+        .service-url { font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 API Gateway Test Client</h1>
+            <p style="color: #666; margin-bottom: 15px;">Enterprise Microservices Testing Interface</p>
+            <span class="status online" id="gatewayStatus">Gateway Online</span>
+            <button onclick="checkHealth()" style="width: auto; padding: 8px 20px; margin-left: 10px;">Refresh Status</button>
+        </div>
+
+        <div class="card">
+            <h2>📊 System Health</h2>
+            <div class="services" id="servicesGrid">
+                <div class="service">
+                    <div class="service-name">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>🤖 AI Prediction Service</h2>
+                <div class="form-group">
+                    <label>Hour (0-23)</label>
+                    <input type="number" id="aiHour" value="14" min="0" max="23">
+                </div>
+                <div class="form-group">
+                    <label>Usage Count</label>
+                    <input type="number" id="aiUsage" value="25" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Context</label>
+                    <select id="aiContext">
+                        <option value="home">Home</option>
+                        <option value="work" selected>Work</option>
+                        <option value="public">Public</option>
+                    </select>
+                </div>
+                <button onclick="testAI()">Get AI Prediction</button>
+                <div class="response" id="aiResponse" style="display:none;"></div>
+            </div>
+
+            <div class="card">
+                <h2>🔐 Authentication Service</h2>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="authUser" value="admin">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="authPass" value="password123">
+                </div>
+                <button onclick="testAuth()">Test Login</button>
+                <div class="response" id="authResponse" style="display:none;"></div>
+            </div>
+
+            <div class="card">
+                <h2>⚡ Load Test</h2>
+                <div class="form-group">
+                    <label>Number of Requests</label>
+                    <input type="number" id="loadRequests" value="100" min="1" max="1000">
+                </div>
+                <div class="form-group">
+                    <label>Concurrent Requests</label>
+                    <input type="number" id="loadConcurrent" value="10" min="1" max="50">
+                </div>
+                <button onclick="runLoadTest()">Run Load Test</button>
+                <div class="response" id="loadResponse" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GATEWAY_URL = 'http://localhost:3000';
+
+        async function checkHealth() {
+            try {
+                const res = await fetch(`${GATEWAY_URL}/health`);
+                const data = await res.json();
+                document.getElementById('gatewayStatus').textContent = 'Gateway Online';
+                document.getElementById('gatewayStatus').className = 'status online';
+                
+                const grid = document.getElementById('servicesGrid');
+                grid.innerHTML = Object.entries(data.services).map(([name, url]) => `
+                    <div class="service">
+                        <div class="service-name">${name.toUpperCase()}</div>
+                        <div class="service-url">${url}</div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('gatewayStatus').textContent = 'Gateway Offline';
+                document.getElementById('gatewayStatus').className = 'status offline';
+            }
+        }
+
+        async function testAI() {
+            const hour = document.getElementById('aiHour').value;
+            const usageCount = document.getElementById('aiUsage').value;
+            const context = document.getElementById('aiContext').value;
+            
+            try {
+                const res = await fetch(`${GATEWAY_URL}/api/ai/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ hour: parseInt(hour), usageCount: parseInt(usageCount), context })
+                });
+                const data = await res.json();
+                const responseDiv = document.getElementById('aiResponse');
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function testAuth() {
+            const username = document.getElementById('authUser').value;
+            const password = document.getElementById('authPass').value;
+            
+            try {
+                const res = await fetch(`${GATEWAY_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                const responseDiv = document.getElementById('authResponse');
+                responseDiv.style.display = 'block';
+                responseDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        async function runLoadTest() {
+            const total = parseInt(document.getElementById('loadRequests').value);
+            const concurrent = parseInt(document.getElementById('loadConcurrent').value);
+            const responseDiv = document.getElementById('loadResponse');
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = '<pre>Running load test...</pre>';
+            
+            const start = Date.now();
+            let completed = 0;
+            let errors = 0;
+            
+            const makeRequest = async () => {
+                try {
+                    await fetch(`${GATEWAY_URL}/health`);
+                    completed++;
+                } catch {
+                    errors++;
+                }
+            };
+            
+            const batches = Math.ceil(total / concurrent);
+            for (let i = 0; i < batches; i++) {
+                const batchSize = Math.min(concurrent, total - i * concurrent);
+                await Promise.all(Array(batchSize).fill().map(makeRequest));
+            }
+            
+            const duration = Date.now() - start;
+            const rps = (completed / (duration / 1000)).toFixed(2);
+            
+            responseDiv.innerHTML = `<pre>Load Test Results:
+Total Requests: ${total}
+Completed: ${completed}
+Errors: ${errors}
+Duration: ${duration}ms
+Requests/sec: ${rps}
+Avg Response: ${(duration / total).toFixed(2)}ms</pre>`;
+        }
+
+        checkHealth();
+        setInterval(checkHealth, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "ai-automation-dashboard",
+  "version": "1.0.0",
+  "description": "Enterprise Dashboard for AI Automation System",
+  "scripts": {
+    "dev": "npx http-server . -p 8080 -o dashboard.html",
+    "build": "echo Dashboard is standalone HTML - no build needed"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

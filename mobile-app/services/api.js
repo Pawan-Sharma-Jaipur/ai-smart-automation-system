@@ -1,41 +1,75 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+const API_URL = 'http://localhost:3000';
 
-const API_URL = 'http://localhost:5000/api';
-
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
+export const api = {
+  // Auth
+  login: async (username, password) => {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    return res.json();
   },
-});
 
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  register: async (username, email, password, role = 'User') => {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password, role })
+    });
+    return res.json();
+  },
+
+  // AI Predictions
+  predict: async (hour, usageCount, context, batteryLevel, userId) => {
+    const res = await fetch(`${API_URL}/api/ai/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hour, usageCount, context, batteryLevel, userId })
+    });
+    return res.json();
+  },
+
+  getPredictions: async () => {
+    const res = await fetch(`${API_URL}/api/ai/predictions`);
+    return res.json();
+  },
+
+  getStats: async () => {
+    const res = await fetch(`${API_URL}/api/ai/stats`);
+    return res.json();
+  },
+
+  // Users
+  getUsers: async () => {
+    const res = await fetch(`${API_URL}/api/users`);
+    return res.json();
+  },
+
+  changeRole: async (userId, role) => {
+    const res = await fetch(`${API_URL}/api/users/${userId}/role`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role })
+    });
+    return res.json();
+  },
+
+  // Logs
+  getLogs: async () => {
+    const res = await fetch(`${API_URL}/api/logs`);
+    return res.json();
+  },
+
+  // Admin
+  getDashboard: async () => {
+    const res = await fetch(`${API_URL}/api/admin/dashboard`);
+    return res.json();
+  },
+
+  // Health
+  health: async () => {
+    const res = await fetch(`${API_URL}/health`);
+    return res.json();
   }
-  return config;
-});
-
-export const authAPI = {
-  register: (data) => api.post('/auth/register', data),
-  login: (data) => api.post('/auth/login', data),
 };
-
-export const aiAPI = {
-  predict: (data) => api.post('/ai/predict', data),
-};
-
-export const adminAPI = {
-  assignRole: (data) => api.post('/admin/assign-role', data),
-  getAllLogs: () => api.get('/admin/logs'),
-  getAllUsers: () => api.get('/admin/users'),
-};
-
-export const blockchainAPI = {
-  logAction: (data) => api.post('/blockchain/log', data),
-  getLogs: () => api.get('/blockchain/logs'),
-};
-
-export default api;

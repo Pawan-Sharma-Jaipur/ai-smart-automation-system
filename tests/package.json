@@ -1,0 +1,12 @@
+{
+  "name": "ai-automation-tests",
+  "version": "1.0.0",
+  "description": "Automated tests for AI Automation System",
+  "scripts": {
+    "test": "node automated-tests.js",
+    "test:rbac": "node rbac-test.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Client</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #4ec9b0; margin-bottom: 20px; }
+        .endpoint { background: #252526; padding: 20px; margin-bottom: 20px; border-radius: 8px; border-left: 4px solid #4ec9b0; }
+        .endpoint h3 { color: #dcdcaa; margin-bottom: 10px; }
+        .method { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; margin-right: 10px; }
+        .method.get { background: #4ec9b0; color: #000; }
+        .method.post { background: #ce9178; color: #000; }
+        .method.put { background: #569cd6; color: #000; }
+        button { background: #0e639c; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #1177bb; }
+        .response { background: #1e1e1e; border: 1px solid #3c3c3c; padding: 15px; margin-top: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        input, textarea, select { background: #3c3c3c; border: 1px solid #555; color: #d4d4d4; padding: 8px; margin: 5px 0; border-radius: 4px; width: 100%; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 AI Automation API Test Client</h1>
+        
+        <div class="endpoint">
+            <h3><span class="method get">GET</span> Health Check</h3>
+            <button onclick="testHealth()">Test Health</button>
+            <div id="health-response" class="response"></div>
+        </div>
+
+        <div class="grid">
+            <div class="endpoint">
+                <h3><span class="method post">POST</span> Login</h3>
+                <input type="text" id="login-username" placeholder="Username" value="admin">
+                <input type="password" id="login-password" placeholder="Password" value="admin123">
+                <button onclick="testLogin()">Test Login</button>
+                <div id="login-response" class="response"></div>
+            </div>
+
+            <div class="endpoint">
+                <h3><span class="method post">POST</span> Register</h3>
+                <input type="text" id="reg-username" placeholder="Username" value="testuser">
+                <input type="email" id="reg-email" placeholder="Email" value="test@test.com">
+                <input type="password" id="reg-password" placeholder="Password" value="test123">
+                <select id="reg-role">
+                    <option value="User">User</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Manager">Manager</option>
+                </select>
+                <button onclick="testRegister()">Test Register</button>
+                <div id="register-response" class="response"></div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method post">POST</span> AI Prediction</h3>
+            <div class="grid">
+                <div>
+                    <input type="number" id="pred-hour" placeholder="Hour (0-23)" value="14" min="0" max="23">
+                    <input type="number" id="pred-usage" placeholder="Usage Count" value="25" min="0">
+                    <select id="pred-context">
+                        <option value="0">Home</option>
+                        <option value="1">Work</option>
+                        <option value="2">Public</option>
+                    </select>
+                    <input type="number" id="pred-battery" placeholder="Battery Level" value="75" min="0" max="100">
+                    <button onclick="testPrediction()">Make Prediction</button>
+                </div>
+                <div id="prediction-response" class="response"></div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="endpoint">
+                <h3><span class="method get">GET</span> All Users</h3>
+                <button onclick="testGetUsers()">Get Users</button>
+                <div id="users-response" class="response"></div>
+            </div>
+
+            <div class="endpoint">
+                <h3><span class="method get">GET</span> Activity Logs</h3>
+                <button onclick="testGetLogs()">Get Logs</button>
+                <div id="logs-response" class="response"></div>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method put">PUT</span> Change User Role</h3>
+            <input type="number" id="role-userid" placeholder="User ID" value="2">
+            <select id="role-new">
+                <option value="Admin">Admin</option>
+                <option value="Manager">Manager</option>
+                <option value="User">User</option>
+                <option value="Guest">Guest</option>
+            </select>
+            <button onclick="testChangeRole()">Change Role</button>
+            <div id="role-response" class="response"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method post">POST</span> Blockchain Log</h3>
+            <input type="number" id="bc-userid" placeholder="User ID" value="1">
+            <input type="text" id="bc-action" placeholder="Action" value="Test Action">
+            <button onclick="testBlockchain()">Log to Blockchain</button>
+            <div id="blockchain-response" class="response"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method get">GET</span> Admin Dashboard</h3>
+            <button onclick="testAdminDashboard()">Get Dashboard Stats</button>
+            <div id="admin-response" class="response"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+
+        function displayResponse(elementId, data, isError = false) {
+            const el = document.getElementById(elementId);
+            el.className = `response ${isError ? 'error' : 'success'}`;
+            el.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function testHealth() {
+            try {
+                const res = await fetch(`${API_URL}/health`);
+                const data = await res.json();
+                displayResponse('health-response', data);
+            } catch (err) {
+                displayResponse('health-response', { error: err.message }, true);
+            }
+        }
+
+        async function testLogin() {
+            try {
+                const res = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('login-username').value,
+                        password: document.getElementById('login-password').value
+                    })
+                });
+                const data = await res.json();
+                displayResponse('login-response', data, !data.success);
+            } catch (err) {
+                displayResponse('login-response', { error: err.message }, true);
+            }
+        }
+
+        async function testRegister() {
+            try {
+                const res = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('reg-username').value,
+                        email: document.getElementById('reg-email').value,
+                        password: document.getElementById('reg-password').value,
+                        role: document.getElementById('reg-role').value
+                    })
+                });
+                const data = await res.json();
+                displayResponse('register-response', data, !data.success);
+            } catch (err) {
+                displayResponse('register-response', { error: err.message }, true);
+            }
+        }
+
+        async function testPrediction() {
+            try {
+                const res = await fetch(`${API_URL}/api/ai/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        hour: parseInt(document.getElementById('pred-hour').value),
+                        usageCount: parseInt(document.getElementById('pred-usage').value),
+                        context: parseInt(document.getElementById('pred-context').value),
+                        batteryLevel: parseInt(document.getElementById('pred-battery').value),
+                        userId: 1
+                    })
+                });
+                const data = await res.json();
+                displayResponse('prediction-response', data, !data.success);
+            } catch (err) {
+                displayResponse('prediction-response', { error: err.message }, true);
+            }
+        }
+
+        async function testGetUsers() {
+            try {
+                const res = await fetch(`${API_URL}/api/users`);
+                const data = await res.json();
+                displayResponse('users-response', data, !data.success);
+            } catch (err) {
+                displayResponse('users-response', { error: err.message }, true);
+            }
+        }
+
+        async function testGetLogs() {
+            try {
+                const res = await fetch(`${API_URL}/api/logs`);
+                const data = await res.json();
+                displayResponse('logs-response', data, !data.success);
+            } catch (err) {
+                displayResponse('logs-response', { error: err.message }, true);
+            }
+        }
+
+        async function testChangeRole() {
+            try {
+                const userId = document.getElementById('role-userid').value;
+                const res = await fetch(`${API_URL}/api/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        role: document.getElementById('role-new').value
+                    })
+                });
+                const data = await res.json();
+                displayResponse('role-response', data, !data.success);
+            } catch (err) {
+                displayResponse('role-response', { error: err.message }, true);
+            }
+        }
+
+        async function testBlockchain() {
+            try {
+                const res = await fetch(`${API_URL}/api/blockchain/log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: parseInt(document.getElementById('bc-userid').value),
+                        action: document.getElementById('bc-action').value
+                    })
+                });
+                const data = await res.json();
+                displayResponse('blockchain-response', data, !data.success);
+            } catch (err) {
+                displayResponse('blockchain-response', { error: err.message }, true);
+            }
+        }
+
+        async function testAdminDashboard() {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/dashboard`);
+                const data = await res.json();
+                displayResponse('admin-response', data, !data.success);
+            } catch (err) {
+                displayResponse('admin-response', { error: err.message }, true);
+            }
+        }
+
+        // Auto-test health on load
+        window.onload = () => testHealth();
+    </script>
+</body>
+</html>

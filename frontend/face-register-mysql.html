@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Face - AI Automation</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 500px; width: 100%; padding: 40px; }
+        h1 { text-align: center; color: #2d3748; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #4a5568; font-weight: 600; }
+        .form-group input { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; }
+        .video-container { position: relative; width: 100%; margin: 20px 0; border-radius: 12px; overflow: hidden; background: #000; }
+        #video { width: 100%; display: block; }
+        #canvas { position: absolute; top: 0; left: 0; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .status { padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600; }
+        .status.info { background: #bee3f8; color: #2c5282; }
+        .status.success { background: #c6f6d5; color: #22543d; }
+        .status.error { background: #fed7d7; color: #742a2a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Register Your Face</h1>
+        <div id="status" class="status info">Enter existing credentials to register face login</div>
+
+        <form id="credentialsForm" onsubmit="verifyCredentials(event)">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Verify and Continue</button>
+        </form>
+
+        <div id="faceCapture" style="display:none;">
+            <div class="video-container">
+                <video id="video" autoplay muted playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+            <button class="btn btn-primary" onclick="captureFace()">Capture Face</button>
+        </div>
+
+        <div style="text-align:center; margin-top:20px; font-size:14px; color:#718096;">
+            Already registered? <a href="face-login-mysql.html" style="color:#667eea; font-weight:600;">Login here</a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3005';
+        let video;
+        let canvas;
+        let credentials;
+
+        async function verifyExistingSession() {
+            const token = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+            if (!token || !storedUser) return;
+            try {
+                const response = await fetch(`${API_URL}/api/auth/verify`, { headers: { Authorization: `Bearer ${token}` } });
+                if (!response.ok) {
+                    localStorage.clear();
+                    return;
+                }
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = 'dashboard-mysql.html';
+                } else {
+                    localStorage.clear();
+                }
+            } catch (error) {
+                console.error('Session verify failed:', error);
+            }
+        }
+
+        verifyExistingSession();
+
+        async function verifyCredentials(event) {
+            event.preventDefault();
+            credentials = {
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value
+            };
+            const status = document.getElementById('status');
+            status.className = 'status info';
+            status.textContent = 'Loading AI models...';
+            try {
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video = document.getElementById('video');
+                canvas = document.getElementById('canvas');
+                video.srcObject = stream;
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    document.getElementById('credentialsForm').style.display = 'none';
+                    document.getElementById('faceCapture').style.display = 'block';
+                    status.className = 'status success';
+                    status.textContent = 'Position your face and click capture';
+                }, { once: true });
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = 'Failed to start camera';
+                console.error('Registration setup error:', error);
+            }
+        }
+
+        async function captureFace() {
+            const status = document.getElementById('status');
+            status.className = 'status info';
+            status.textContent = 'Analyzing face...';
+            try {
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                if (!detection) {
+                    status.className = 'status error';
+                    status.textContent = 'No face detected. Try again';
+                    return;
+                }
+                const response = await fetch(`${API_URL}/api/auth/register-face`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...credentials, faceDescriptor: Array.from(detection.descriptor) })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    status.className = 'status success';
+                    status.textContent = 'Face registered. Redirecting to login...';
+                    setTimeout(() => { window.location.href = 'face-login-mysql.html'; }, 1500);
+                    return;
+                }
+                status.className = 'status error';
+                status.textContent = data.error || 'Face registration failed';
+            } catch (error) {
+                status.className = 'status error';
+                status.textContent = 'Registration failed';
+                console.error('Face registration error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

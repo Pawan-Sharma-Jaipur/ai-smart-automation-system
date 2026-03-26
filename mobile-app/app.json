@@ -1,23 +1,13 @@
 {
   "expo": {
-    "name": "AIAutomationApp",
-    "slug": "ai-automation-app",
+    "name": "AI Automation",
+    "slug": "ai-automation-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
-      }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": false },
+    "android": { "adaptiveIcon": { "backgroundColor": "#667eea" } },
+    "newArchEnabled": false
   }
 }

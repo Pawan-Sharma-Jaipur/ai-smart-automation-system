@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('../shared/authRoutes');
+const authRoutes = require('./shared/authRoutes');
 
 const app = express();
 const PORT = 3001;

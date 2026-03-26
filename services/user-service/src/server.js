@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3003;
 
 app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json());
 
 app.get('/health', (req, res) => {

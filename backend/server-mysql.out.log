@@ -1,0 +1,10 @@
+
+========================================
+  AI AUTOMATION BACKEND (MySQL)
+========================================
+Server:   http://localhost:3005
+Health:   http://localhost:3005/health
+Database: ai_automation
+========================================
+
+MySQL Connected

@@ -9,9 +9,11 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3004;
 
-app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json());
+
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.json({}));
 
 class Block {
   constructor(index, timestamp, data, previousHash = '') {

@@ -12,8 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security & Performance
-app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({ origin: '*', credentials: false }));
+
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.json({}));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('combined'));
@@ -25,6 +27,16 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, please try again later' }
 });
 app.use(limiter);
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'AI Smart Automation - API Gateway',
+    version: '1.0.0',
+    routes: ['/api/auth', '/api/ai', '/api/users', '/api/blockchain', '/health']
+  });
+});
 
 // Auth routes (direct, no proxy)
 app.use('/api/auth', authRoutes);

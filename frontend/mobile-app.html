@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Smartphone Automation</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 { color: #667eea; font-size: 28px; margin-bottom: 10px; text-align: center; }
+        h2 { color: #2d3748; font-size: 20px; margin-bottom: 15px; }
+        .subtitle { color: #718096; text-align: center; margin-bottom: 30px; }
+        video { width: 100%; height: 300px; border-radius: 15px; background: #000; object-fit: cover; }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:active { background: #5568d3; }
+        .role { font-size: 32px; font-weight: bold; color: #667eea; text-align: center; }
+        .permission { color: #48bb78; padding: 8px 0; font-size: 16px; }
+        .restriction { color: #f56565; padding: 8px 0; font-size: 16px; }
+        .hidden { display: none; }
+        .loading { text-align: center; padding: 20px; color: #667eea; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Face Login Screen -->
+        <div id="loginScreen">
+            <div class="card">
+                <h1>🔐 Face Unlock</h1>
+                <p class="subtitle">Position your face in the camera</p>
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas" style="display:none;"></canvas>
+                <div id="status" class="loading">Starting camera...</div>
+                <button onclick="authenticate()">Authenticate</button>
+            </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="dashboardScreen" class="hidden">
+            <div class="card">
+                <h1>📱 Smartphone Automation</h1>
+                <p class="subtitle">Role-Based Access Control</p>
+            </div>
+
+            <div class="card">
+                <h2>User Role</h2>
+                <div class="role" id="userRole">DEVELOPER</div>
+            </div>
+
+            <div class="card">
+                <h2>✅ Allowed Apps</h2>
+                <div id="permissions"></div>
+            </div>
+
+            <div class="card">
+                <h2>🚫 Blocked Apps</h2>
+                <div id="restrictions"></div>
+            </div>
+
+            <button onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://192.168.1.100:3001/api/auth'; // Change to your PC IP
+        let video, canvas, ctx;
+
+        // Start camera
+        window.onload = async () => {
+            video = document.getElementById('video');
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'user' } 
+                });
+                video.srcObject = stream;
+                document.getElementById('status').textContent = 'Camera ready - Click Authenticate';
+            } catch (err) {
+                document.getElementById('status').textContent = 'Camera access denied';
+            }
+
+            // Check if already logged in
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                showDashboard(localStorage.getItem('userRole'));
+            }
+        };
+
+        async function authenticate() {
+            document.getElementById('status').textContent = 'Authenticating...';
+            
+            // Capture face
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            // Simulate face descriptor
+            const faceDescriptor = Array(128).fill(0).map(() => Math.random());
+
+            try {
+                const response = await fetch(`${API_URL}/face-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ faceDescriptor, confidence: 85 })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('userRole', data.user.role);
+                    showDashboard(data.user.role);
+                } else {
+                    document.getElementById('status').textContent = 'Face not recognized';
+                }
+            } catch (error) {
+                document.getElementById('status').textContent = 'Connection failed';
+            }
+        }
+
+        function showDashboard(role) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboardScreen').classList.remove('hidden');
+            document.getElementById('userRole').textContent = role;
+
+            const permissions = {
+                SYSTEM_ADMIN: ['All Apps', 'Settings', 'Banking', 'Admin Controls'],
+                ORG_ADMIN: ['Most Apps', 'Settings (Limited)', 'User Management'],
+                TEAM_LEAD: ['Work Apps', 'Communication', 'Productivity'],
+                DEVELOPER: ['Basic Apps', 'Camera', 'Gallery', 'Social Media'],
+                VIEWER: ['YouTube Kids', 'Educational Apps', 'Games (Limited)']
+            };
+
+            const restrictions = {
+                SYSTEM_ADMIN: [],
+                ORG_ADMIN: ['Banking Apps', 'System Settings'],
+                TEAM_LEAD: ['Settings', 'Banking', 'Admin Panel'],
+                DEVELOPER: ['Settings', 'Banking', 'System Apps'],
+                VIEWER: ['Social Media', 'Browser', 'Settings', 'Calls/SMS']
+            };
+
+            document.getElementById('permissions').innerHTML = 
+                permissions[role].map(p => `<div class="permission">✓ ${p}</div>`).join('');
+            
+            document.getElementById('restrictions').innerHTML = 
+                restrictions[role].map(r => `<div class="restriction">✗ ${r}</div>`).join('');
+        }
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+    </script>
+</body>
+</html>

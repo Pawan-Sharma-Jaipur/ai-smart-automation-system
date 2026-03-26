@@ -54,12 +54,23 @@
         const { useState, useEffect } = React;
         const API_URL = 'http://localhost:3000';
 
+        // RBAC Helper
+        const ROLE_LEVELS = { SYSTEM_ADMIN:5, ORG_ADMIN:4, TEAM_LEAD:3, DEVELOPER:2, VIEWER:1 };
+        const hasRole = (user, minRole) => (ROLE_LEVELS[user?.role] || 0) >= (ROLE_LEVELS[minRole] || 0);
+
+        // Auth check on load
+        const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+        if (!currentUser || !localStorage.getItem('token')) {
+            window.location.href = 'face-login.html';
+        }
+
         function Dashboard() {
             const [activeTab, setActiveTab] = useState('overview');
             const [systemHealth, setSystemHealth] = useState(null);
             const [prediction, setPrediction] = useState(null);
             const [stats, setStats] = useState({ predictions: 0, accuracy: 94.5, uptime: 0, requests: 0 });
             const [loading, setLoading] = useState(false);
+            const user = currentUser;
 
             useEffect(() => {
                 fetchSystemHealth();
@@ -124,16 +135,24 @@
                         <div className={`nav-item ${activeTab === 'services' ? 'active' : ''}`} onClick={() => setActiveTab('services')}>
                             ⚙️ Services
                         </div>
+                        {hasRole(user, 'ORG_ADMIN') && (
+                            <div className="nav-item" onClick={() => window.location.href='admin.html'}>
+                                🛡️ Admin Panel
+                            </div>
+                        )}
                     </div>
 
                     <div className="main">
                         <div className="header">
                             <h1>{activeTab === 'overview' ? 'System Overview' : activeTab === 'predict' ? 'AI Prediction' : activeTab === 'analytics' ? 'Analytics Dashboard' : 'Service Status'}</h1>
                             <div className="user-info">
+                                <span style={{fontSize:'13px', color:'#4a5568'}}>{user?.username} ({user?.role})</span>
                                 <span className={`status-badge ${systemHealth?.status === 'healthy' ? 'status-online' : 'status-offline'}`}>
                                     {systemHealth?.status === 'healthy' ? '● Online' : '● Offline'}
                                 </span>
-                                <div className="avatar">A</div>
+                                <div className="avatar" style={{cursor:'pointer'}} onClick={() => { localStorage.clear(); window.location.href='face-login.html'; }}>
+                                    {user?.username?.[0]?.toUpperCase() || 'U'}
+                                </div>
                             </div>
                         </div>
 
@@ -178,11 +197,11 @@
                             <button className="btn btn-primary" onClick={() => window.location.href = `${API_URL}/health`}>
                                 View Health
                             </button>
-                            <button className="btn btn-primary" onClick={() => window.open('services/ai-service/test-client.html', '_blank')}>
-                                AI Test Client
+                            <button className="btn btn-primary" onClick={() => window.open(`${API_URL}/api/ai/predictions`, '_blank')}>
+                                View Predictions
                             </button>
-                            <button className="btn btn-primary" onClick={() => window.open('services/api-gateway/test-client.html', '_blank')}>
-                                Gateway Test
+                            <button className="btn btn-primary" onClick={() => window.open('http://localhost:3000/health', '_blank')}>
+                                Backend Health
                             </button>
                         </div>
                     </div>

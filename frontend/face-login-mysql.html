@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Login - AI Automation</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); max-width: 540px; width: 100%; padding: 40px; }
+        .logo { text-align: center; font-size: 40px; margin-bottom: 10px; }
+        h1 { text-align: center; color: #2d3748; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { text-align: center; color: #718096; margin-bottom: 30px; font-size: 14px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; border: none; background: none; color: #718096; font-weight: 600; transition: all 0.3s; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .video-container { position: relative; width: 100%; margin-bottom: 20px; border-radius: 12px; overflow: hidden; background: #000; }
+        #video { width: 100%; height: auto; display: block; }
+        #canvas { position: absolute; top: 0; left: 0; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #4a5568; font-weight: 600; font-size: 14px; }
+        .form-group input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; transition: all 0.3s; }
+        .form-group input:focus { outline: none; border-color: #667eea; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-bottom: 10px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #f7fafc; color: #4a5568; border: 2px solid #e2e8f0; }
+        .status { padding: 12px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: 600; }
+        .status.info { background: #bee3f8; color: #2c5282; }
+        .status.success { background: #c6f6d5; color: #22543d; }
+        .status.error { background: #fed7d7; color: #742a2a; }
+        .status.loading { background: #feebc8; color: #7c2d12; }
+        .face-info { background: #f7fafc; padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .face-info p { margin: 5px 0; font-size: 14px; color: #4a5568; }
+        .link { text-align: center; margin-top: 20px; color: #718096; font-size: 14px; }
+        .link a { color: #667eea; text-decoration: none; font-weight: 600; }
+        .helper-card { margin-top: 20px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #f8fafc; }
+        .helper-card h3 { font-size: 15px; color: #2d3748; margin-bottom: 10px; }
+        .helper-card p { font-size: 13px; color: #4a5568; margin-bottom: 10px; line-height: 1.5; }
+        .helper-card code { display: block; word-break: break-all; background: #edf2f7; padding: 10px; border-radius: 8px; color: #2d3748; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">AI</div>
+        <h1>AI Face Recognition</h1>
+        <p class="subtitle">Secure login for MySQL mode</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('face')">Face Login</button>
+            <button class="tab" onclick="switchTab('password')">Password</button>
+        </div>
+
+        <div id="face-tab" class="tab-content active">
+            <div id="status" class="status info">Click "Start Camera" to begin</div>
+            <div class="video-container" id="videoContainer" style="display:none;">
+                <video id="video" autoplay muted playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+            <button id="startBtn" class="btn btn-primary" onclick="startCamera()">Start Camera</button>
+            <button id="captureBtn" class="btn btn-primary" onclick="captureFace()" style="display:none;" disabled>Capture and Login</button>
+            <button id="stopBtn" class="btn btn-secondary" onclick="stopCamera()" style="display:none;">Stop Camera</button>
+            <div id="faceInfo" class="face-info" style="display:none;">
+                <p><strong>Face Detected:</strong> <span id="faceDetected">No</span></p>
+                <p><strong>Confidence:</strong> <span id="confidence">0%</span></p>
+                <p><strong>Status:</strong> <span id="detectionStatus">Waiting...</span></p>
+            </div>
+        </div>
+
+        <div id="password-tab" class="tab-content">
+            <form onsubmit="passwordLogin(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="Enter username" value="admin" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter password" value="password123" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login with Password</button>
+            </form>
+        </div>
+
+        <div class="link">
+            Don't have an account? <a href="face-register-mysql.html">Register Face</a>
+        </div>
+
+        <div class="helper-card">
+            <h3>Forgot password?</h3>
+            <p>Generate a temporary reset token for this local MySQL setup, then set a new password here.</p>
+            <form onsubmit="requestResetToken(event)">
+                <div class="form-group">
+                    <label>Username or Email</label>
+                    <input type="text" id="resetIdentity" placeholder="admin or admin@example.com" required>
+                </div>
+                <button type="submit" class="btn btn-secondary">Generate Reset Token</button>
+            </form>
+            <div id="resetTokenBox" style="display:none;">
+                <p>Use this token within 30 minutes:</p>
+                <code id="resetTokenValue"></code>
+            </div>
+            <form onsubmit="resetPassword(event)" style="margin-top:15px;">
+                <div class="form-group">
+                    <label>Reset Token</label>
+                    <input type="text" id="resetToken" placeholder="Paste reset token" required>
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="At least 6 characters" minlength="6" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Reset Password</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3005';
+        let video;
+        let canvas;
+        let stream;
+        let modelsLoaded = false;
+        let faceDetectionInterval;
+
+        function setStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+
+        async function verifyExistingSession() {
+            const token = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+            if (!token || !storedUser) return;
+            try {
+                const response = await fetch(`${API_URL}/api/auth/verify`, { headers: { Authorization: `Bearer ${token}` } });
+                if (!response.ok) {
+                    localStorage.clear();
+                    return;
+                }
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = 'dashboard-mysql.html';
+                } else {
+                    localStorage.clear();
+                }
+            } catch (error) {
+                console.error('Session verify failed:', error);
+            }
+        }
+
+        verifyExistingSession();
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach((item) => item.classList.remove('active'));
+            if (tab === 'face') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('face-tab').classList.add('active');
+                return;
+            }
+            document.querySelectorAll('.tab')[1].classList.add('active');
+            document.getElementById('password-tab').classList.add('active');
+        }
+
+        async function loadModels() {
+            setStatus('loading', 'Loading AI models...');
+            try {
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                modelsLoaded = true;
+                setStatus('success', 'AI models loaded. Ready to scan');
+                return true;
+            } catch (error) {
+                setStatus('error', 'Failed to load AI models');
+                console.error('Model loading error:', error);
+                return false;
+            }
+        }
+
+        async function startCamera() {
+            if (!modelsLoaded) {
+                const loaded = await loadModels();
+                if (!loaded) return;
+            }
+            setStatus('loading', 'Starting camera...');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                video = document.getElementById('video');
+                canvas = document.getElementById('canvas');
+                video.srcObject = stream;
+                video.addEventListener('loadedmetadata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    document.getElementById('videoContainer').style.display = 'block';
+                    document.getElementById('startBtn').style.display = 'none';
+                    document.getElementById('captureBtn').style.display = 'block';
+                    document.getElementById('stopBtn').style.display = 'block';
+                    document.getElementById('faceInfo').style.display = 'block';
+                    setStatus('info', 'Position your face in the camera');
+                    startFaceDetection();
+                }, { once: true });
+            } catch (error) {
+                setStatus('error', 'Camera access denied');
+                console.error('Camera error:', error);
+            }
+        }
+
+        function startFaceDetection() {
+            faceDetectionInterval = setInterval(async () => {
+                if (!video || video.paused) return;
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (detections.length > 0) {
+                    faceapi.draw.drawDetections(canvas, detections);
+                    faceapi.draw.drawFaceLandmarks(canvas, detections);
+                    const detection = detections[0];
+                    const confidence = Math.round(detection.detection.score * 100);
+                    document.getElementById('faceDetected').textContent = 'Yes';
+                    document.getElementById('confidence').textContent = `${confidence}%`;
+                    document.getElementById('detectionStatus').textContent = 'Ready to capture';
+                    document.getElementById('captureBtn').disabled = false;
+                    return;
+                }
+                document.getElementById('faceDetected').textContent = 'No';
+                document.getElementById('confidence').textContent = '0%';
+                document.getElementById('detectionStatus').textContent = 'No face detected';
+                document.getElementById('captureBtn').disabled = true;
+            }, 100);
+        }
+
+        async function captureFace() {
+            setStatus('loading', 'Analyzing face...');
+            try {
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                if (!detection) {
+                    setStatus('error', 'No face detected. Try again');
+                    return;
+                }
+                const response = await fetch(`${API_URL}/api/auth/face-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ faceDescriptor: Array.from(detection.descriptor), confidence: Math.round(detection.detection.score * 100) })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    setStatus('success', `Welcome ${data.user.username}`);
+                    setTimeout(() => { window.location.href = 'dashboard-mysql.html'; }, 1200);
+                    return;
+                }
+                setStatus('error', data.error || 'Face login failed');
+            } catch (error) {
+                setStatus('error', 'Login failed. Try password login');
+                console.error('Face login error:', error);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) stream.getTracks().forEach((track) => track.stop());
+            if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+            document.getElementById('videoContainer').style.display = 'none';
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('captureBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('faceInfo').style.display = 'none';
+            setStatus('info', 'Click "Start Camera" to begin');
+        }
+
+        async function passwordLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = 'dashboard-mysql.html';
+                    return;
+                }
+                setStatus('error', data.error || data.message || 'Invalid credentials');
+            } catch (error) {
+                setStatus('error', 'Login failed. Check if backend is running');
+                console.error('Login error:', error);
+            }
+        }
+
+        async function requestResetToken(event) {
+            event.preventDefault();
+            const identity = document.getElementById('resetIdentity').value.trim();
+            const payload = identity.includes('@') ? { email: identity } : { username: identity };
+            try {
+                const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    setStatus('error', data.error || 'Could not generate reset token');
+                    return;
+                }
+                setStatus('success', data.message || 'Reset token generated');
+                if (data.resetToken) {
+                    document.getElementById('resetToken').value = data.resetToken;
+                    document.getElementById('resetTokenValue').textContent = data.resetToken;
+                    document.getElementById('resetTokenBox').style.display = 'block';
+                }
+            } catch (error) {
+                setStatus('error', 'Reset token request failed');
+                console.error('Reset token error:', error);
+            }
+        }
+
+        async function resetPassword(event) {
+            event.preventDefault();
+            const token = document.getElementById('resetToken').value.trim();
+            const newPassword = document.getElementById('newPassword').value;
+            try {
+                const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, newPassword })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setStatus('success', data.message || 'Password reset successful');
+                    document.getElementById('password').value = newPassword;
+                    return;
+                }
+                setStatus('error', data.error || 'Password reset failed');
+            } catch (error) {
+                setStatus('error', 'Password reset failed');
+                console.error('Password reset error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

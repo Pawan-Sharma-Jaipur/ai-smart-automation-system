@@ -151,7 +151,7 @@ function UsersTab({ users, onChangeRole }) {
           <View style={styles.userRole}>
             <Text style={styles.roleLabel}>Role: {user.role}</Text>
             <View style={styles.roleButtons}>
-              {['Admin', 'Manager', 'User', 'Guest'].map((r) => (
+              {['SYSTEM_ADMIN', 'ORG_ADMIN', 'TEAM_LEAD', 'DEVELOPER', 'VIEWER'].map((r) => (
                 <TouchableOpacity
                   key={r}
                   style={[styles.roleButton, user.role === r && styles.roleButtonActive]}

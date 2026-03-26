@@ -5,6 +5,7 @@ const db = require('./database');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const isBcryptHash = (value) => typeof value === 'string' && /^\$2[aby]\$\d{2}\$/.test(value);
 
 // Register
 router.post('/register', async (req, res) => {
@@ -65,7 +66,19 @@ router.post('/login', async (req, res) => {
     }
 
     const user = users[0];
-    const validPassword = await bcrypt.compare(password, user.password);
+    let validPassword = false;
+
+    if (isBcryptHash(user.password)) {
+      validPassword = await bcrypt.compare(password, user.password);
+    } else {
+      validPassword = password === user.password;
+
+      if (validPassword) {
+        const upgradedHash = await bcrypt.hash(password, 10);
+        await db.execute('UPDATE users SET password = ? WHERE id = ?', [upgradedHash, user.id]);
+        user.password = upgradedHash;
+      }
+    }
 
     if (!validPassword) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
@@ -311,7 +324,19 @@ router.post('/register-face', async (req, res) => {
     }
 
     const user = users[0];
-    const validPassword = await bcrypt.compare(password, user.password);
+    let validPassword = false;
+
+    if (isBcryptHash(user.password)) {
+      validPassword = await bcrypt.compare(password, user.password);
+    } else {
+      validPassword = password === user.password;
+
+      if (validPassword) {
+        const upgradedHash = await bcrypt.hash(password, 10);
+        await db.execute('UPDATE users SET password = ? WHERE id = ?', [upgradedHash, user.id]);
+        user.password = upgradedHash;
+      }
+    }
 
     if (!validPassword) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
